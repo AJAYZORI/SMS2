@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Home Page</title>
+<!-- Add Font Awesome for Icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+<!-- Import Montserrat Font -->
+
+<link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;800&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+</head>
+<body>
+<div class="top-nav">
+    <a href="{{ url_for('Society') }}" id="home-Society">Society</a>
+    {% if current_user.userType == 'admin' %}
+        <a href="#" id="members-link">Members</a>
+        <a href="{{ url_for('add_maintenance_page') }}" id="add-maintenance-link">Maintenance</a>
+        <a class="nav-link" href="/expenses">View Expenses</a>
+    {% endif %}
+    <a href="{{ url_for('maintenance_Report') }}" id="add-maintenance-Report">Maintenance Report</a>
+    <a href="/logout" id="user-name" style="float:right;"></a>
+</div>
+
+<!-- Main Content -->
+<div class="container my-5">
+    <h1 class="text-center mb-4 heading-text">ABCD CO OP Society Ltd.</h1>
+    <!-- Dashboard Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <i class="fas fa-wallet"></i> Total Maintenance Collected
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ total_maintenance }}</h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <i class="fas fa-money-bill-wave"></i> Total Expenses
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ total_expenses }}</h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <i class="fas fa-chart-line"></i> Net Funds
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ net_funds }}</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+    <!-- Table Container -->
+    <div class="table-container">
+        <h2>Owners</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>User Type</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="ownersTable">
+                <!-- Owners details will be populated here by JavaScript -->
+            </tbody>
+        </table>
+
+        <!-- Edit Form -->
+        <div id="editForm" class="hidden">
+            <h2>Edit Owner</h2>
+            <form id="editOwnerForm">
+                <input type="hidden" id="editEmail" name="editEmail">
+                <label for="editName">Name:</label>
+                <input type="text" id="editName" name="editName" required>
+                <label for="editPassword">Password:</label>
+                <input type="password" id="editPassword" name="editPassword" required>
+                <label for="editNewEmail">Email:</label>
+                <input type="email" id="editNewEmail" name="editNewEmail" required>
+                <label for="editUserType">User Type:</label>
+                <input type="text" id="editUserType" name="editUserType" required>
+                <label for="editPhone">Phone:</label>
+                <input type="text" id="editPhone" name="editPhone">
+                <label for="editAddress">Address:</label>
+                <input type="text" id="editAddress" name="editAddress">
+                <label for="editFamilyMembers">Family Members:</label>
+                <input type="text" id="editFamilyMembers" name="editFamilyMembers">
+                <button type="submit">Save</button>
+            </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  fetch('/get_current_user')
+    .then(response => response.json())
+    .then(data => {
+      if (data.user) {
+        const userNameElement = document.getElementById('user-name');
+        userNameElement.innerHTML = `<font color='red' style="text-transform:uppercase">${data.user.name}</font> : <font color='gray' style="text-transform:uppercase"> Logout </font>`;
+      }
+    })
+    .catch(error => console.error('Error:', error));
+});
+
+document.getElementById('members-link').addEventListener('click', function(event) {
+  event.preventDefault(); // Prevent default link behavior
+  fetch('/get_members')
+    .then(response => response.json())
+    .then(data => {
+      const tbody = document.getElementById('ownersTable');
+      tbody.innerHTML = ''; // Clear existing table rows
+      if (data.data) {
+        data.data.owners.forEach(owner => {
+          const row = tbody.insertRow();
+          const nameCell = row.insertCell(0);
+          const emailCell = row.insertCell(1);
+          const userTypeCell = row.insertCell(2);
+          const actionsCell = row.insertCell(3);
+
+          nameCell.textContent = owner.name;
+          emailCell.textContent = owner.email;
+          userTypeCell.textContent = owner.userType;
+
+          const editButton = document.createElement('button');
+          editButton.textContent = 'Edit';
+          editButton.onclick = function() {
+            editOwner(owner.email);
+          };
+
+          const deleteButton = document.createElement('button');
+          deleteButton.textContent = 'Delete';
+          deleteButton.onclick = function() {
+            deleteOwner(owner.email);
+          };
+
+          actionsCell.appendChild(editButton);
+          actionsCell.appendChild(deleteButton);
+        });
+      } else {
+        alert(data.message);
+      }
+    })
+    .catch(error => console.error('Error:', error));
+});
+
+function editOwner(email) {
+  fetch('/get_members')
+    .then(response => response.json())
+    .then(data => {
+      const owner = data.data.owners.find(owner => owner.email === email);
+      document.getElementById('editEmail').value = owner.email;
+      document.getElementById('editName').value = owner.name;
+      document.getElementById('editPassword').value = owner.password;
+      document.getElementById('editNewEmail').value = owner.email;
+      document.getElementById('editUserType').value = owner.userType;
+      document.getElementById('editPhone').value = owner.Phone.join(', ');
+      document.getElementById('editAddress').value = owner.Address.join(', ');
+      document.getElementById('editFamilyMembers').value = owner['Family Members'].map(f => `${f.name}: ${f.relation}`).join(', ');
+      document.getElementById('editForm').classList.remove('hidden');
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+document.getElementById('editOwnerForm').addEventListener('submit', function(event) {
+  event.preventDefault();
+  const email = document.getElementById('editEmail').value;
+  const newName = document.getElementById('editName').value;
+  const newEmail = document.getElementById('editNewEmail').value;
+  const newPassword = document.getElementById('editPassword').value;
+  const newUserType = document.getElementById('editUserType').value;
+  const newPhone = document.getElementById('editPhone').value.split(',').map(item => item.trim());
+  const newAddress = document.getElementById('editAddress').value.split(',').map(item => item.trim());
+  const newFamilyMembers = document.getElementById('editFamilyMembers').value.split(',').map(item => {
+    const [name, relation] = item.split(':').map(str => str.trim());
+    return { name, relation };
+  });
+
+  fetch('/edit_member', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ 
+      email: email, 
+      newName: newName, 
+      newEmail: newEmail, 
+      newPassword: newPassword, 
+      newUserType: newUserType,
+      newPhone: newPhone,
+      newAddress: newAddress,
+      newFamilyMembers: newFamilyMembers 
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    alert(data.message);
+    location.reload();
+  });
+});
+
+function deleteOwner(email) {
+  if (confirm('Are you sure you want to delete this owner?')) {
+    fetch('/delete_member', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email: email })
+    })
+    .then(response => response.json())
+    .then(data => {
+      alert(data.message);
+      location.reload();
+    });
+  }
+}
+</script>
+
+<!-- Add Bootstrap JS and FontAwesome -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.6.0/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script src="https://kit.fontawesome.com/a076d05399.js"></script>
+</body>
+</html>

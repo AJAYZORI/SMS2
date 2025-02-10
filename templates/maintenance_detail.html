@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maintenance Detail Report</title>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <div class="top-nav">
+    <a href="{{ url_for('Society') }}" id="home-Society">Society</a>
+    {% if current_user.userType == 'admin' %}
+        <a href="#" id="members-link">Members</a>
+        <a href="{{ url_for('add_maintenance_page') }}" id="add-maintenance-link">Maintenance</a>
+        <a class="nav-link" href="/expenses">View Expenses</a>
+    {% endif %}
+    <a href="{{ url_for('maintenance_Report') }}" id="add-maintenance-Report">Maintenance Report</a>
+    <a href="/logout" id="user-name" style="float:right;"></a>
+</div>
+<div class="container">
+  <h2 id="userName"></h2>
+  <button id="downloadPdf" class="btn btn-primary">Download PDF</button>
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Amount</th>
+        <th>Method</th>
+      </tr>
+    </thead>
+    <tbody id="detailTable">
+      <!-- Maintenance details will be populated here by JavaScript -->
+    </tbody>
+  </table>
+</div>
+
+<script>
+  
+  document.addEventListener("DOMContentLoaded", function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const email = urlParams.get('email');
+    const startDate = urlParams.get('start_date');
+    const endDate = urlParams.get('end_date');
+  
+    fetch(`/get_user?email=${email}&start_date=${startDate}&end_date=${endDate}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.user) {
+          const userNameElement = document.getElementById('userName');
+          userNameElement.textContent = `${data.user.name} - Maintenance Details`;
+  
+          const detailTable = document.getElementById('detailTable');
+          detailTable.innerHTML = ''; // Clear existing table rows
+          
+          const filteredMaintenance = data.user.maintenance.filter(maintenance => {
+            const maintenanceDate = new Date(maintenance.date);
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            console.log("MD : START : ", startDate)
+  
+            return maintenanceDate >= start && maintenanceDate <= end;
+          });
+  
+          filteredMaintenance.forEach(maintenance => {
+            const row = detailTable.insertRow();
+            const dateCell = row.insertCell(0);
+            const amountCell = row.insertCell(1);
+            const methodCell = row.insertCell(2);
+  
+            dateCell.textContent = maintenance.date;
+            amountCell.textContent = maintenance.amount;
+            methodCell.textContent = maintenance.method;
+          });
+        } else {
+          alert(data.message);
+        }
+      })
+      .catch(error => console.error('Error:', error));
+      
+    document.getElementById('downloadPdf').addEventListener('click', function() {
+      window.location.href = `/download_pdf?email=${email}&start_date=${startDate}&end_date=${endDate}`;
+    });
+  });
+  
+</script>
+</body>
+</html>

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maintenance Report</title>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <div class="top-nav">
+    <a href="{{ url_for('Society') }}" id="home-Society">Society</a>
+    {% if current_user.userType == 'admin' %}
+        <a href="#" id="members-link">Members</a>
+        <a href="{{ url_for('add_maintenance_page') }}" id="add-maintenance-link">Maintenance</a>
+        <a class="nav-link" href="/expenses">View Expenses</a>
+    {% endif %}
+    <a href="{{ url_for('maintenance_Report') }}" id="add-maintenance-Report">Maintenance Report</a>
+    <a href="/logout" id="user-name" style="float:right;"></a>
+</div>
+
+<div class="container">
+  <h2>Maintenance Report</h2>
+  <form id="filterForm">
+    <label for="start_date">Start Date:</label>
+    <input type="date" id="start_date" name="start_date">
+    <label for="end_date">End Date:</label>
+    <input type="date" id="end_date" name="end_date">
+    <button type="submit" id="filterButton">Filter</button>
+  </form>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Total Amount</th>
+      </tr>
+    </thead>
+    <tbody id="reportTable">
+      <!-- Maintenance report will be populated here by JavaScript -->
+    </tbody>
+  </table>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    // Trigger the filter button click event after the page loads
+    
+    fetch('/get_current_user')
+      .then(response => response.json())
+      .then(data => {
+        if (data.user) {
+          const userNameElement = document.getElementById('user-name');
+          userNameElement.innerHTML = `<font color='red' style="text-transform:uppercase">${data.user.name}</font> : <font color='gray' style="text-transform:uppercase"> Logout </font>`;
+          
+          console.log('________');
+          console.log('user', data.user);
+          console.log('________');
+  
+          const userEmail = data.user.email;
+  
+          // Show or hide links based on user type
+          if (data.user.userType === 'admin') {
+            document.getElementById('members-link').classList.remove('hidden');
+            document.getElementById('add-maintenance-link').classList.remove('hidden');
+            document.querySelectorAll('.top-nav a:nth-child(4)').forEach(el => el.classList.remove('hidden'));
+  
+            // Admin sees all users
+            fetchMaintenanceReport('admin', userEmail);
+          } else {
+            // Regular user sees only their data
+            fetchMaintenanceReport('user', userEmail);
+            //console.log("USERRRRRRRR: ", userEmail);
+          }
+          
+          // Add event listener to filter form
+          document.getElementById('filterForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const startDate = document.getElementById('start_date').value;
+            const endDate = document.getElementById('end_date').value;
+
+            if (data.user.userType === 'admin') {
+              if (startDate === '' || endDate === ''){
+                fetchMaintenanceReport('admin', null, '2000-01-01', '2099-12-31');
+              }else{
+                fetchMaintenanceReport('admin', null, startDate, endDate);
+              }
+
+              
+            } else { 
+                if (startDate === '' || endDate === ''){
+                  fetchMaintenanceReport('user', userEmail, '2000-01-01', '2099-12-31');
+                }else{
+                  fetchMaintenanceReport('user', userEmail, startDate, endDate);
+                }
+            }
+          });
+        }
+
+        // Trigger the filter button click event after the page loads
+        document.getElementById('filterButton').click();
+      })
+      .catch(error => console.error('Error:', error));
+  });
+  
+  function fetchMaintenanceReport(role, userEmail, startDate = null, endDate = null) {
+    let url = '/get_maintenance_report';
+    let params = [];
+    
+    if (role === 'user' && userEmail) {
+      params.push(`email=${userEmail}`);
+    }
+    if (startDate) {
+      params.push(`start_date=${startDate}`);
+    }
+    if (endDate) {
+      params.push(`end_date=${endDate}`);
+    }
+    if (params.length > 0) {
+      url += `?${params.join('&')}`;
+    }
+  
+    fetch(url)
+      .then(response => response.json())
+      .then(data => {
+        const tbody = document.getElementById('reportTable');
+        tbody.innerHTML = ''; // Clear existing table rows
+  
+        if (data.data) {
+          data.data.forEach(report => {
+            const row = tbody.insertRow();
+            const nameCell = row.insertCell(0);
+            const emailCell = row.insertCell(1);
+            const amountCell = row.insertCell(2);
+  
+            nameCell.textContent = report.name;
+            emailCell.textContent = report.email;
+  
+            // Log userEmail and report.email for debugging
+            console.log('userEmail:', userEmail);
+            console.log('report.email:', report.email);
+  
+            if (role === 'admin' || (role === 'user' && userEmail === report.email)) {
+              amountCell.textContent = report.totalAmount;
+              row.addEventListener('click', function() {
+                if (role === 'admin' || (role === 'user' && userEmail === report.email)) {
+                    window.location.href = `/maintenance_detail?email=${report.email}&start_date=${startDate}&end_date=${endDate}`;
+                } else {
+                  alert("You do not have permission to view this detail.");
+                }
+              });
+            } else {
+              amountCell.textContent = 'Hidden';
+              row.addEventListener('click', function() {
+                alert("You do not have permission to view this detail.");
+              });
+            }
+          });
+        } else {
+          alert(data.message);
+        }
+      })
+      .catch(error => console.error('Error:', error));
+  }
+  
+  
+</script>
+</body>
+</html>

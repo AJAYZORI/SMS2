@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+
+</head>
+<body>
+<div class="container" id="container">
+    <div class="form-container sign-up-container">
+        <form id="signupForm">
+            <h1>Create Account </br> <span>use your email for registration</span> </h1>
+            <div class="social-container"></div>
+            
+            <input type="text" placeholder="Name" id="signupName" required />
+            <input type="email" placeholder="Email" id="signupEmail" required />
+            <input type="password" placeholder="Password" id="signupPassword" required />
+            <div class="slider-container">
+                <label for="userTypeSlider">User Type: </label>
+                <input type="range" min="0" max="1" value="0" class="slider" id="userTypeSlider" oninput="updateUserTypeLabel(this.value)">
+                <span id="userTypeLabel">User</span>
+            </div>
+            <button type="submit" onmouseover="sUp(this)">Sign Up</button>
+        </form>
+    </div>
+    <div class="form-container sign-in-container">
+        <form id="loginForm">
+            <h1>Sign in</h1>
+            <div class="social-container"></div>
+            
+            <input type="email" placeholder="Email" id="loginEmail" required />
+            <input type="password" placeholder="Password" id="loginPassword" required />
+            <a href="#">Forgot your password?</a>
+            <button type="submit" onmouseover="sIn(this)">Sign In</button>
+        </form>
+    </div>
+    <div class="overlay-container">
+        <div class="overlay">
+            <div class="overlay-panel overlay-left">
+                <h1>Welcome Back!</h1>
+                <p>Register yourself into the system for access or if existing user, please login!</p>
+                <button class="ghost" id="signIn" onmouseover="sIn(this)">Sign In</button>
+            </div>
+            <div class="overlay-panel overlay-right">
+                <h1>Hello, Friend!</h1>
+                <p>Use your details to access this tool or register yourself!</p>
+                <button class="ghost" id="signUp" onmouseover="sUp(this)">Sign Up</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Message Box -->
+<div class="message-box" id="messageBox">
+    <h2 id="messageText"></h2>
+    <button onclick="closeMessageBox()">Close</button>
+</div>
+
+<footer>
+    <h2>Society Management System</h2>
+</footer>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+<script>
+    function updateUserTypeLabel(value) {
+        const userTypeLabel = document.getElementById('userTypeLabel');
+        userTypeLabel.textContent = value == 0 ? 'User' : 'Admin';
+    }
+
+    // Handle form submission for sign up
+    document.getElementById('signupForm').addEventListener('submit', function(event) {
+        event.preventDefault(); // Prevent the default form submission
+
+        const name = document.getElementById('signupName').value;
+        const email = document.getElementById('signupEmail').value;
+        const password = document.getElementById('signupPassword').value;
+        const userType = document.getElementById('userTypeSlider').value == 0 ? 'user' : 'admin';
+
+        // Send the data to the server
+        fetch('/signup', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ name, email, password, userType })
+        })
+        .then(response => response.json().then(data => ({ status: response.status, body: data })))
+        .then(({ status, body }) => {
+            // Handle the server response
+            if (status === 409) {
+                showMessageBox('User already in database');
+            } else if (status === 200) {
+                showMessageBox('User added successfully!');
+            } else {
+                console.log(body.message);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    });
+
+    // Handle form submission for login
+    document.getElementById('loginForm').addEventListener('submit', function(event) {
+        event.preventDefault(); // Prevent the default form submission
+
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+
+        // Send the data to the server
+        fetch('/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email, password })
+        })
+        .then(response => {
+            if (response.status === 200) {
+                window.location.href = '/home'; // Redirect to home page on successful login
+            } else {
+                return response.json();
+            }
+        })
+        .then(data => {
+            // Handle the server response
+            if (data) {
+                if (data.message === 'User not found or incorrect password') {
+                    showMessageBox(data.message);
+                }
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    });
+
+    function showMessageBox(message) {
+        const messageText = document.getElementById('messageText');
+        const messageBox = document.getElementById('messageBox');
+        messageText.textContent = message;
+        messageBox.style.display = 'block';
+    }
+
+    function closeMessageBox() {
+        const messageBox = document.getElementById('messageBox');
+        messageBox.style.display = 'none';
+    }
+</script>
+</body>
+</html>
